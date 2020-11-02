@@ -48,8 +48,17 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG,"connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:%s",
-                 ip4addr_ntoa(&event->ip_info.ip));
+        // Caused a warning.
+        // /home/build/ws/firmware/freertos_apps/microros_esp32_extensions/main/main.c:51:49: warning: passing argument 1 of 'ip4addr_ntoa' from incompatible pointer type [-Wincompatible-pointer-types]
+        //  ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->ip_info.ip));
+        //                                          ^~~~~~~~~~~~~~~~~~
+        // ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->ip_info.ip));
+        //
+        // Fixed code.
+        const int buf_len = 20;
+        char ip4_addr_buf[buf_len];
+        esp_ip4addr_ntoa(&event->ip_info.ip, ip4_addr_buf, buf_len);
+        ESP_LOGI(TAG, "got ip:%s", ip4_addr_buf);
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -107,7 +116,7 @@ void wifi_init_sta()
 
 
 void app_main(void)
-{   
+{
     // Start networkign if required
 #ifdef UCLIENT_PROFILE_UDP
     //Initialize NVS
