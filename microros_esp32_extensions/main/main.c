@@ -11,14 +11,13 @@
 #include <string.h>
 #include "freertos/event_groups.h"
 #include "esp_system.h"
+#include "esp_netif.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
 
-#include "lwip/err.h"
-#include "lwip/sys.h"
 
 #define ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
 #define ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
@@ -48,13 +47,6 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG,"connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        // Caused a warning.
-        // /home/build/ws/firmware/freertos_apps/microros_esp32_extensions/main/main.c:51:49: warning: passing argument 1 of 'ip4addr_ntoa' from incompatible pointer type [-Wincompatible-pointer-types]
-        //  ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->ip_info.ip));
-        //                                          ^~~~~~~~~~~~~~~~~~
-        // ESP_LOGI(TAG, "got ip:%s", ip4addr_ntoa(&event->ip_info.ip));
-        //
-        // Fixed code.
         const int buf_len = 20;
         char ip4_addr_buf[buf_len];
         esp_ip4addr_ntoa(&event->ip_info.ip, ip4_addr_buf, buf_len);
@@ -68,7 +60,11 @@ void wifi_init_sta()
 {
     s_wifi_event_group = xEventGroupCreate();
 
-    tcpip_adapter_init();
+    // Based on this blog: https://esp32.com/viewtopic.php?f=2&t=13205
+    esp_netif_init();
+    // ESP netif object representing the WIFI station.
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    assert(sta_netif);
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
